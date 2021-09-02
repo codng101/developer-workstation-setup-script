@@ -69,7 +69,7 @@ rpm_packages_to_install=(
     ImageMagick
     borgbackup
     chromium
-    # code
+    code
     ffmpeg
     fuse-exfat
     gcc-c++
@@ -93,7 +93,9 @@ rpm_packages_to_install=(
 
 flathub_packages_to_install=(
     fr.handbrake.ghb
-    org.signal.Signal)
+    org.signal.Signal
+    com.axosoft.GitKraken
+    com.spotify.Client)
 
 npm_global_packages_to_install=(
     vscode-langservers-extracted
@@ -195,7 +197,10 @@ elif [ "$ID" == "fedora" ]; then
             xrandr
             zathura
             zathura-bash-completion
-            zathura-pdf-mupdf)
+            zathura-pdf-mupdf
+            steam
+            lutris
+            atom)
 
         rpm_packages_to_remove+=("${fedora_rpm_packages_to_remove[@]}")
         rpm_packages_to_install+=("${fedora_rpm_packages_to_install[@]}")
@@ -206,9 +211,36 @@ elif [ "$ID" == "fedora" ]; then
         dnf -y config-manager --add-repo https://download.opensuse.org/repositories/home:stig124:nnn/Fedora_34/home:stig124:nnn.repo
     }
 
+    install_jetbrains(){
+        set -e
+
+        if [[ ! -f ~/.local/share/JetBrains/Toolbox/bin/jetbrains-toolbox ]]; then
+        msg_start "Installing jetbrains Toolbox"
+        URL=$(curl -s 'https://data.services.jetbrains.com//products/releases?code=TBA&latest=true&type=release' | jq -r '.TBA[0].downloads.linux.link')
+
+        DOWNLOAD_TEMP_DIR=$(mktemp -d)
+
+        mkdir -p "${DOWNLOAD_TEMP_DIR}"
+
+        curl -L "${URL}" --output "${DOWNLOAD_TEMP_DIR}/toolbox.tar.gz"
+
+        TOOLBOX_TEMP_DIR=$(mktemp -d)
+
+        tar -C "$TOOLBOX_TEMP_DIR" -xf "${DOWNLOAD_TEMP_DIR}/toolbox.tar.gz"
+        rm "${DOWNLOAD_TEMP_DIR}/toolbox.tar.gz"
+
+        # for whatever stupid reasons bash doesn't expand the star here...
+        # it automatically installs itself into ~/.local/share/JetBrains/Toolbox/
+        bash -c "${TOOLBOX_TEMP_DIR}/*/jetbrains-toolbox"
+        rm -rf "${TOOLBOX_TEMP_DIR}"
+        msg_success "Installing jetbrains Toolbox: done."
+        fi
+    }
+
     setup_fedora_packages
     display_user_settings_and_prompt
     add_fedora_repositories
+    install_jetbrains
 
 #==============================================================================
 # For Unsupported OS / RHEL or clone version <8
@@ -231,6 +263,10 @@ add_repositories() {
         ;;&
     *' lazygit '*)
         dnf -y copr enable atim/lazygit
+        ;;&
+    *' atom '*)
+        rpm --import https://packagecloud.io/AtomEditor/atom/gpgkey
+        sh -c 'echo -e "[Atom]\nname=Atom Editor\nbaseurl=https://packagecloud.io/AtomEditor/atom/el/7/\$basearch\nenabled=1\ngpgcheck=0\nrepo_gpgcheck=1\ngpgkey=https://packagecloud.io/AtomEditor/atom/gpgkey" > /etc/yum.repos.d/atom.repo'
         ;;&
     *' gh '*)
         dnf -y config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
